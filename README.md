@@ -24,8 +24,8 @@ The categorical target variable (`Happiness.Level`) is derived from the `Happine
 | Metric     | Naive Bayes | Decision Tree | KNN   |
 |------------|-------------|----------------|-------|
 | **Accuracy**   | 89.1%       | 82.6%          | 80.4% |
-| **Recall**     | 86.1%       | 82.5%          | 74.1% |
-| **Precision**  | 88.4%       | 76.7%          | 76.8% |
+| **Recall**     | 88.4%       | 76.7%          | 78.6% |
+| **Precision**  | 86.1%       | 82.5%          | 74.1% |
 | **F1 Score**   | 86.8%       | 78.4%          | 75.3% |
 
 Naive Bayes performs best across all evaluation metrics.
