@@ -103,10 +103,4 @@ https://mohit26bm.shinyapps.io/happiness-ml-dashboard/
 
 ---
 
-## 👨‍💻 Author
-
-This dashboard was developed by Mohit Bali as part of a machine learning and data visualization project using R and Shiny.
-
----
-
 
