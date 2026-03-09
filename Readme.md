@@ -1,6 +1,8 @@
-# World Happiness ML Dashboard
+# **Global Compass:** Decoding What Makes Nations Happy
 
 An interactive Shiny dashboard built in R to explore, analyze, and predict happiness levels across countries using the **World Happiness Report** dataset. The dashboard combines multiple machine learning models with an interactive UI for prediction, feature exploration, and country comparison.
+
+[See it here](https://datavizs.shinyapps.io/global-compass/)
 
 ---
 
@@ -11,19 +13,14 @@ An interactive Shiny dashboard built in R to explore, analyze, and predict happi
 - [Project Structure](#project-structure)
 - [Machine Learning Models](#machine-learning-models)
 - [Model Results](#model-results)
-- [Dashboard Features](#dashboard-features)
 - [Data Pipeline](#data-pipeline)
-- [Installation & Setup](#installation--setup)
-- [Running the App](#running-the-app)
-- [Deployment](#deployment)
 - [Key Findings](#key-findings)
-- [Dependencies](#dependencies)
 
 ---
 
 ## Overview
 
-This project applies **5 classification models** and **4 regression models** to predict happiness outcomes for countries worldwide. A custom Shiny dashboard provides interactive visualisations, confusion matrices, feature importance exploration, a live prediction tool, and a country comparison tool.
+This project applies **6 classification models** and **4 regression models** to predict happiness outcomes for countries worldwide. A custom Shiny dashboard provides interactive visualisations, confusion matrices, feature importance exploration, a live prediction tool, and a country comparison tool.
 
 ---
 
@@ -78,7 +75,8 @@ Happiness-ML-Dashboard/
 │   ├── model_decision_tree.R
 │   ├── model_linear_regression.R
 │   ├── model_random_forest.R
-│   └── model_xgboost.R
+│   ├── model_xgboost.R
+│   └── model_logistic_regression.R
 │
 └── modules/
     ├── mod_predict.R
@@ -100,7 +98,7 @@ Happiness levels are derived from `Happiness.Score` using:
 | Medium | 5.0 – 7.0 |
 | High | > 7.0 |
 
-Models used: **KNN, Naive Bayes, Decision Tree, Random Forest, XGBoost**
+Models used: **KNN, Naive Bayes, Decision Tree, Random Forest, XGBoost, Logistic Regression**
 
 ### Regression — predicts `Happiness.Score` (continuous)
 
@@ -139,6 +137,7 @@ Models used: **Linear Regression, Decision Tree, Random Forest, XGBoost**
 | KNN | 83.9% | 84.3% | 81.1% | 81.9% |
 | Random Forest | 83.9% | 91.7% | 75.0% | 79.4% |
 | XGBoost | 83.9% | 79.9% | 76.1% | 77.6% |
+| Logistic Regression | 77.4% | 78.9% | 70.0% | 72.4% |
 | Decision Tree | 77.4% | 75.0% | 76.7% | 75.3% |
 
 **Per-class F1 Score (High class — hardest to predict):**
@@ -149,6 +148,7 @@ Models used: **Linear Regression, Decision Tree, Random Forest, XGBoost**
 | KNN | 85.7% | 84.8% | 75.0% |
 | Random Forest | 85.7% | 85.7% | 66.7% |
 | Decision Tree | 81.8% | 77.4% | 66.7% |
+| Logistic Regression | 80.0% | 80.0% | 57.1% |
 | XGBoost | 91.7% | 83.9% | 57.1% |
 
 > Naive Bayes outperforms all models including the more complex ensemble methods — a meaningful result on this small, low-correlation dataset.
@@ -168,20 +168,6 @@ Models used: **Linear Regression, Decision Tree, Random Forest, XGBoost**
 
 ---
 
-## Dashboard Features
-
-| Tab | Description |
-| --- | --- |
-| **Overview** | Dataset summary, score distribution, top/bottom 10 countries, correlation heatmap |
-| **Classification** | Confusion matrices for all 5 classifiers, decision tree visualisation |
-| **Regression** | Actual vs predicted and residual plots for all 4 regressors, metrics table |
-| **Model Comparison** | Side-by-side bar charts for Accuracy, Precision, Recall, F1 Score |
-| **Feature Importance** | Per-model importance charts (normalised 0–100), RF vs XGBoost comparison, cross-model summary table |
-| **Predict** | Slider-based input form — get predictions from all 5 classifiers and 4 regressors simultaneously |
-| **Country Compare** | Select up to 5 countries and compare feature profiles and happiness scores |
-
----
-
 ## Data Pipeline
 
 ```text
@@ -195,75 +181,6 @@ All model files consume a **consistent return structure:**
 
 ```text
 list(model, predictions, actuals, conf_matrix / residuals, importance, metrics, type)
-```
-
----
-
-## Installation & Setup
-
-### 1. Install required packages
-
-```r
-install.packages(c(
-  "shiny",
-  "shinydashboard",
-  "ggplot2",
-  "plotly",
-  "caTools",
-  "class",
-  "e1071",
-  "rpart",
-  "rpart.plot",
-  "randomForest",
-  "xgboost",
-  "dplyr",
-  "tidyr",
-  "viridis"
-))
-```
-
-### 2. Clone or download the project
-
-```text
-Happiness-ML-Dashboard/
-```
-
-### 3. Generate the cleaned dataset (one time only)
-
-```r
-setwd("path/to/Happiness-ML-Dashboard")
-source("data_loader.R")
-data <- load_data("data/World Happiness Report.csv")
-write.csv(data, "data/World_Happiness_Cleaned.csv", row.names = FALSE)
-```
-
----
-
-## Running the App
-
-```r
-setwd("path/to/Happiness-ML-Dashboard")
-shiny::runApp()
-```
-
-The app trains all models on startup. Expected load time is 10–20 seconds depending on hardware.
-
----
-
-## Deployment
-
-The app is deployed on ShinyApps.io:
-
-```text
-https://mohit26bm.shinyapps.io/happiness-ml-dashboard/
-```
-
-To redeploy:
-
-```r
-install.packages("rsconnect")
-library(rsconnect)
-rsconnect::deployApp()
 ```
 
 ---
@@ -286,26 +203,8 @@ rsconnect::deployApp()
 
 - Naive Bayes outperforms Random Forest and XGBoost for classification — simpler models win when features have low inter-correlation and the dataset is small
 - Linear Regression outperforms XGBoost for regression on this dataset — complexity does not always improve performance
-- The High happiness class (13 countries) is the hardest to predict across all models — XGBoost scores only 57.1% F1 on this class
+- The High happiness class (13 countries) is the hardest to predict across all models — XGBoost and Logistic Regression both score only 57.1% F1 on this class
 - Job Satisfaction was added as a feature in this version and immediately became the strongest predictor, outranking Economy and Health in most models
-
----
-
-## Dependencies
-
-| Package | Version | Purpose |
-| --- | --- | --- |
-| shiny | latest | Web app framework |
-| shinydashboard | latest | Sidebar dashboard layout |
-| ggplot2 | latest | Static plots |
-| plotly | latest | Interactive plots |
-| caTools | latest | Train/test split |
-| class | latest | KNN |
-| e1071 | latest | Naive Bayes |
-| rpart | latest | Decision Tree |
-| rpart.plot | latest | Decision Tree visualisation |
-| randomForest | latest | Random Forest |
-| xgboost | latest | XGBoost |
-| dplyr | latest | Data manipulation |
-| tidyr | latest | pivot_longer for country compare |
-| viridis | latest | Color scales for importance plots |
+- Logistic Regression reveals a multicollinearity issue — Economy shows a coefficient of -20.8 for the High happiness class despite being a positive predictor. This is caused by its strong correlation with Health (r=0.84) and Job Satisfaction (r=0.70), which claim the same variance first. This does not affect prediction accuracy but highlights a known limitation of linear models on correlated feature sets
+- Generosity is the only feature truly independent of all others (r < 0.07 with Health and Family), confirming its consistently low importance ranking across all models including Logistic Regression
+- Logistic Regression coefficients are shown separately from feature importance — they reflect partial effects after accounting for other features, not raw importance scores, and are not directly comparable to tree-based importance metrics

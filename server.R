@@ -4,7 +4,8 @@ library(dplyr)
 source("data_loader.R")
 source("utils.R")
 source("metrics_plotting.R")
-source("models/model_knn.R")
+source("models/model_knn.R") 
+source("models/model_logistic_regression.R") #######
 source("models/model_naive_bayes.R")
 source("models/model_decision_tree.R")
 source("models/model_linear_regression.R")
@@ -28,6 +29,7 @@ server <- function(input, output, session) {
   nb_res      <- run_naive_bayes(train, test)
   dt_cls_res  <- run_decision_tree_classifier(train, test)
   dt_reg_res  <- run_decision_tree_regressor(train, test)
+  lr_cls_res <- run_logistic_regression(train, test) # Logistic Regression
   lr_res      <- run_linear_regression(train, test)
   rf_cls_res  <- train_rf_classifier(train, test)
   rf_reg_res  <- train_rf_regressor(train, test)
@@ -37,9 +39,10 @@ server <- function(input, output, session) {
   # ── 3. Classification metrics ────────────────────────
   knn_m     <- calculate_metrics(knn_res$cm)
   nb_m      <- calculate_metrics(nb_res$cm)
-  dt_m      <- calculate_metrics(dt_cls_res$cm)        # ← fixed
+  dt_m      <- calculate_metrics(dt_cls_res$cm)        
   rf_cls_m  <- calculate_metrics(rf_cls_res$conf_matrix)
   xgb_cls_m <- calculate_metrics(xgb_cls_res$conf_matrix)
+  lr_cls_m <- calculate_metrics(lr_cls_res$cm) # Logistic REgression metrics
   
   metrics_df <- data.frame(
     Model     = c(
@@ -47,12 +50,12 @@ server <- function(input, output, session) {
       "Naive Bayes",
       "Decision Tree",
       "Random Forest",
-      "XGBoost"
+      "XGBoost", "Logistic Regression"
     ),
     Accuracy  = c(
       knn_m$accuracy,
       nb_m$accuracy,
-      dt_m$accuracy,
+      dt_m$accuracy,lr_cls_m$accuracy,
       rf_cls_m$accuracy,
       xgb_cls_m$accuracy
     )   * 100,
@@ -60,21 +63,21 @@ server <- function(input, output, session) {
       knn_m$mean_recall,
       nb_m$mean_recall,
       dt_m$mean_recall,
-      rf_cls_m$mean_recall,
+      rf_cls_m$mean_recall,lr_cls_m$mean_recall,
       xgb_cls_m$mean_recall
     ) * 100,
     Precision = c(
       knn_m$mean_precision,
       nb_m$mean_precision,
       dt_m$mean_precision,
-      rf_cls_m$mean_precision,
+      rf_cls_m$mean_precision,lr_cls_m$mean_precision,
       xgb_cls_m$mean_precision
     ) * 100,
     F1_Score  = c(
       knn_m$mean_f1,
       nb_m$mean_f1,
       dt_m$mean_f1,
-      rf_cls_m$mean_f1,
+      rf_cls_m$mean_f1,lr_cls_m$mean_f1,
       xgb_cls_m$mean_f1
     )    * 100
   )
@@ -123,6 +126,27 @@ server <- function(input, output, session) {
   })
   output$xgb_cls_matrix <- renderPlotly({
     render_confusion_matrix(xgb_cls_res$conf_matrix, "XGBoost")
+  })
+  output$lr_cls_matrix <- renderPlotly({
+    render_confusion_matrix(lr_cls_res$cm, "Logistic Regression")
+  })
+  
+  output$lr_cls_coef_plot <- renderPlotly({
+    p <- ggplot(lr_cls_res$coef_long,
+                aes(x = reorder(Feature, Coefficient),
+                    y = Coefficient, fill = Class)) +
+      geom_col(position = "dodge") +
+      coord_flip() +
+      scale_fill_manual(values = c("Medium" = "steelblue",
+                                   "High"   = "coral")) +
+      geom_hline(yintercept = 0, linetype = "dashed",
+                 color = "black", linewidth = 0.5) +
+      labs(title = "Logistic Regression — Coefficients by Class",
+           x = "Feature", y = "Coefficient",
+           caption = "Positive = increases probability of that class") +
+      theme_minimal() +
+      theme(legend.position = "top")
+    plotly::ggplotly(p)
   })
   
   # ── 6. Metric comparison charts ──────────────────────
@@ -443,8 +467,69 @@ server <- function(input, output, session) {
       theme(legend.position = "none")
     
     plotly::ggplotly(p)
-  })                                      # ← importance_plot ends here
-  
+  })
+  output$importance_compare_plot <- renderPlotly({
+    # Random Forest
+    rf_imp <- data.frame(
+      Feature = rf_cls_res$importance$Feature,
+      Score   = rf_cls_res$importance$MeanDecreaseAccuracy,
+      Model   = "Random Forest",
+      stringsAsFactors = FALSE
+    )
+    
+    # XGBoost
+    xgb_imp <- data.frame(
+      Feature = xgb_cls_res$importance$Feature,
+      Score   = xgb_cls_res$importance$Gain,
+      Model   = "XGBoost",
+      stringsAsFactors = FALSE
+    )
+    
+    # Decision Tree — named numeric vector
+    dt_imp <- data.frame(
+      Feature = names(dt_cls_res$model$variable.importance),
+      Score   = as.numeric(dt_cls_res$model$variable.importance),
+      Model   = "Decision Tree",
+      stringsAsFactors = FALSE
+    )
+    
+    # KNN has no feature importance — skip
+    # Naive Bayes has no feature importance — skip
+    
+    # Normalise each model to 0-1 independently
+    rf_imp$Score  <- rf_imp$Score  / max(rf_imp$Score, na.rm = TRUE)
+    xgb_imp$Score <- xgb_imp$Score / max(xgb_imp$Score, na.rm = TRUE)
+    dt_imp$Score  <- dt_imp$Score  / max(dt_imp$Score, na.rm = TRUE)
+    
+    combined <- rbind(rf_imp, xgb_imp, dt_imp)
+    combined <- combined[!is.na(combined$Score) &
+                           !is.nan(combined$Score), ]
+    
+    # Fix factor order by average score across models
+    feature_order <- combined %>%
+      group_by(Feature) %>%
+      summarise(avg = mean(Score, na.rm = TRUE)) %>%
+      arrange(avg) %>%
+      pull(Feature)
+    
+    combined$Feature <- factor(combined$Feature, levels = feature_order)
+    
+    p <- ggplot(combined, aes(x = Feature, y = Score, fill = Model)) +
+      geom_col(position = "dodge") +
+      coord_flip() +
+      scale_fill_manual(
+        values = c(
+          "Random Forest" = "steelblue",
+          "XGBoost"       = "coral",
+          "Decision Tree" = "#F39C12"
+        )
+      ) +
+      labs(title = "Feature Importance — Decision Tree vs Random Forest vs XGBoost", x = "Feature", y = "Normalised Importance (0-1)") +
+      theme_minimal() +
+      theme(legend.position = "top")
+    
+    plotly::ggplotly(p)
+  })
   
   output$importance_summary_table <- renderTable({
     # ← separate block

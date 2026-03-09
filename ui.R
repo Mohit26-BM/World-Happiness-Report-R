@@ -2,12 +2,15 @@
 library(shiny)
 library(shinydashboard)
 library(plotly)
+library(htmltools)
 
 ui <- dashboardPage(
   skin = "blue",
   
   # ── Header ──────────────────────────────────────────
-  dashboardHeader(title = "Happiness ML Dashboard"),
+  dashboardHeader(
+    title = "Global Compass"
+  ),
   
   # ── Sidebar ─────────────────────────────────────────
   dashboardSidebar(
@@ -50,10 +53,9 @@ ui <- dashboardPage(
         tabName = "overview",
         h2("World Happiness Report — ML Dashboard"),
         p(
-          "Explore happiness across countries using 5 classifiers and 4 regressors."
+          "Explore happiness across countries using 6 classifiers and 4 regressors."
         ),
         fluidRow(
-          # Summary stat boxes
           valueBoxOutput("total_countries", width = 3),
           valueBoxOutput("num_features", width = 3),
           valueBoxOutput("best_classifier", width = 3),
@@ -104,6 +106,7 @@ ui <- dashboardPage(
         p(
           "Confusion matrices for all 5 classifiers predicting Happiness Level (Low / Medium / High)."
         ),
+        
         fluidRow(
           box(
             title = "KNN",
@@ -136,6 +139,29 @@ ui <- dashboardPage(
             width = 4,
             status = "primary",
             plotlyOutput("xgb_cls_matrix", height = "350px")
+          )
+        ),
+        fluidRow(
+          box(
+            title = "Logistic Regression",
+            width = 6,
+            status = "primary",
+            plotlyOutput("lr_cls_matrix", height = "350px")
+          ),
+          box(
+            title = "Logistic Regression — Coefficients",
+            width = 6,
+            status = "warning",
+            p(
+              "Coefficients show direction and strength of each feature per class.
+  Economy appears negative for the High class not because it reduces happiness,
+  but due to multicollinearity — Economy correlates 0.84 with Health and 0.70
+  with Job Satisfaction. Once those features are accounted for, Economy has no
+  remaining variance to explain. Generosity is the only truly independent
+  feature (correlation < 0.07 with Health and Family).",
+              style = "font-size:12px; color:#555;"
+            ),
+            plotlyOutput("lr_cls_coef_plot", height = "300px")
           )
         ),
         fluidRow(
@@ -313,9 +339,13 @@ ui <- dashboardPage(
         ),
         fluidRow(
           box(
-            title = "Side-by-Side Comparison (RF vs XGBoost — Classification)",
+            title = "Feature Importance Comparison — Decision Tree vs Random Forest vs XGBoost",
             width = 12,
             status = "info",
+            p(
+              "KNN and Naive Bayes are excluded — these models do not produce feature importance scores.",
+              style = "font-size:12px; color:#777;"
+            ),
             plotlyOutput("importance_compare_plot", height = "380px")
           )
         ),
